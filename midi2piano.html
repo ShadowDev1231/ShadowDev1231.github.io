@@ -238,6 +238,12 @@
         border-color: #555;
     }
 
+    .key.active {
+        transform: translateY(3px);
+        filter: brightness(1.35);
+        box-shadow: 0 0 0 2px #fff inset;
+    }
+
     .small {
         color: #777;
         font-size: 12px;
@@ -393,6 +399,12 @@
             Total playable keys: <span id="keyCount"></span>
         </p>
 
+        <div class="buttons">
+            <button id="playPreviewButton" class="primary" disabled>▶ Play Piano Preview</button>
+            <button id="stopPreviewButton" disabled>■ Stop</button>
+        </div>
+        <div id="previewStatus" class="status" style="margin-top:10px;">Load a MIDI file to preview it here.</div>
+
     </div>
 
     <div class="panel">
@@ -531,6 +543,10 @@ MIDI state.
 */
 let midiData = null;
 let generatedLua = "";
+let audioContext = null;
+let previewTimers = [];
+let previewSources = [];
+let previewPlaying = false;
 
 
 /* ============================================================
@@ -551,6 +567,9 @@ const trackSelect = document.getElementById("trackSelect");
 
 const keyboardElement = document.getElementById("keyboard");
 const keyCount = document.getElementById("keyCount");
+const playPreviewButton = document.getElementById("playPreviewButton");
+const stopPreviewButton = document.getElementById("stopPreviewButton");
+const previewStatus = document.getElementById("previewStatus");
 
 const runTestsButton = document.getElementById("runTestsButton");
 const clearTestsButton = document.getElementById("clearTestsButton");
@@ -583,6 +602,115 @@ function buildKeyboard() {
 }
 
 buildKeyboard();
+
+function getAudioContext() {
+    if (!audioContext) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) throw new Error("Web Audio is not supported by this browser.");
+        audioContext = new Ctx();
+    }
+    if (audioContext.state === "suspended") return audioContext.resume();
+    return Promise.resolve();
+}
+
+function keyElement(key) {
+    return Array.from(keyboardElement.children).find(el => el.textContent === key);
+}
+
+function playPianoNote(midiNote, velocity = 100, when = 0, duration = 0.22) {
+    if (!audioContext) return;
+    const now = audioContext.currentTime + when;
+    const gain = audioContext.createGain();
+    const osc1 = audioContext.createOscillator();
+    const osc2 = audioContext.createOscillator();
+    const volume = Math.max(0.03, Math.min(0.18, (velocity / 127) * 0.16));
+    osc1.type = "triangle";
+    osc2.type = "sine";
+    osc1.frequency.value = 440 * Math.pow(2, (midiNote - 69) / 12);
+    osc2.frequency.value = osc1.frequency.value * 2;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(volume, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.06, duration));
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(audioContext.destination);
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + Math.max(0.08, duration) + 0.03);
+    osc2.stop(now + Math.max(0.08, duration) + 0.03);
+
+    const key = midiToKey(midiNote);
+    const el = keyElement(key);
+    if (el) {
+        const onTimer = setTimeout(() => el.classList.add("active"), Math.max(0, when * 1000));
+        const offTimer = setTimeout(() => el.classList.remove("active"), Math.max(20, (when + duration) * 1000));
+        previewTimers.push(onTimer, offTimer);
+    }
+    previewSources.push(osc1, osc2);
+}
+
+function stopPianoPreview() {
+    previewTimers.forEach(clearTimeout);
+    previewTimers = [];
+    previewSources.forEach(source => { try { source.stop(); } catch (_) {} });
+    previewSources = [];
+    document.querySelectorAll("#keyboard .key.active").forEach(el => el.classList.remove("active"));
+    previewPlaying = false;
+    playPreviewButton.disabled = !midiData;
+    stopPreviewButton.disabled = true;
+    previewStatus.textContent = midiData ? "Preview stopped." : "Load a MIDI file to preview it here.";
+}
+
+async function playPianoPreview() {
+    if (!midiData) return;
+    stopPianoPreview();
+    try {
+        await getAudioContext();
+        const notes = collectNotes();
+        if (!notes.length) {
+            previewStatus.textContent = "No playable notes found in the selected track(s).";
+            return;
+        }
+        const speed = Math.max(0.01, Number(document.getElementById("speed").value) || 1);
+        const tempoMap = buildTempoMap();
+        const times = notes.map(n => ticksToSeconds(n.tick, tempoMap) / speed);
+        const start = times[0] || 0;
+        previewPlaying = true;
+        playPreviewButton.disabled = true;
+        stopPreviewButton.disabled = false;
+        previewStatus.textContent = "Playing " + notes.length + " notes…";
+        const minDelay = Math.max(0, Number(document.getElementById("minimumDelay").value) || 0);
+        notes.forEach((note, i) => {
+            const t = Math.max(0, times[i] - start);
+            const next = i + 1 < times.length ? Math.max(0.06, times[i + 1] - times[i]) : 0.22;
+            playPianoNote(note.pitch, note.velocity, t, Math.min(0.45, Math.max(0.08, next || minDelay || 0.22)));
+        });
+        const total = Math.max(0.25, (times[times.length - 1] - start) + 0.5);
+        const finishTimer = setTimeout(() => {
+            if (previewPlaying) stopPianoPreview();
+            previewStatus.textContent = "Preview finished.";
+        }, total * 1000);
+        previewTimers.push(finishTimer);
+    } catch (error) {
+        previewStatus.textContent = "Could not start preview: " + error.message;
+        stopPianoPreview();
+    }
+}
+
+playPreviewButton.addEventListener("click", playPianoPreview);
+stopPreviewButton.addEventListener("click", stopPianoPreview);
+
+keyboardElement.addEventListener("click", event => {
+    const el = event.target.closest(".key");
+    if (!el) return;
+    const index = Array.from(keyboardElement.children).indexOf(el);
+    if (index < 0) return;
+    getAudioContext().then(() => {
+        playPianoNote(LOWEST_MIDI_NOTE + index, 110, 0, 0.35);
+        el.classList.add("active");
+        setTimeout(() => el.classList.remove("active"), 350);
+    }).catch(() => {});
+});
 
 
 /* ============================================================
@@ -1065,6 +1193,9 @@ async function loadMidiFile(file) {
         );
 
         convertButton.disabled = false;
+        playPreviewButton.disabled = false;
+        stopPreviewButton.disabled = true;
+        previewStatus.textContent = "Ready to play the MIDI as piano audio.";
 
         setStatus(
             "Loaded: " +
@@ -1085,6 +1216,8 @@ async function loadMidiFile(file) {
         midiData = null;
 
         convertButton.disabled = true;
+        stopPianoPreview();
+        playPreviewButton.disabled = true;
 
         setStatus(
             "Could not read MIDI:\n" +
@@ -1644,7 +1777,6 @@ function formatNumber(value) {
 
 
 /* ============================================================
-/* ============================================================
    BUILT-IN TEST SYSTEM
    ============================================================ */
 
@@ -1656,7 +1788,7 @@ function createTestMIDI() {
     const bytes = [
         0x4D,0x54,0x68,0x64, 0x00,0x00,0x00,0x06,
         0x00,0x00, 0x00,0x01, 0x01,0xE0,
-        0x4D,0x54,0x72,0x6B, 0x00,0x00,0x00,0x13,
+        0x4D,0x54,0x72,0x6B, 0x00,0x00,0x00,0x14,
         0x00,0xFF,0x51,0x03,0x07,0xA1,0x20,
         0x00,0x90,0x3C,0x64,
         0x83,0x60,0x80,0x3C,0x00,
@@ -1721,6 +1853,7 @@ clearTestsButton.addEventListener("click", () => {
     testResults.innerHTML = "";
 });
 
+/* ============================================================
    CONVERT BUTTON
 ============================================================ */
 
