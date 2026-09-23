@@ -426,6 +426,16 @@
     </div>
 
     <div class="panel">
+        <h2>Test System</h2>
+        <p class="small">Run built-in checks for the MIDI parser, keyboard mapping, timing conversion, and Lua formatting.</p>
+        <div class="buttons">
+            <button id="runTestsButton" class="primary">Run Tests</button>
+            <button id="clearTestsButton">Clear Results</button>
+        </div>
+        <div id="testSummary" class="status" style="margin-top:15px;">Tests have not been run yet.</div>
+        <div id="testResults" class="status" style="margin-top:10px;"></div>
+    </div>
+    <div class="panel">
 
         <h2>Generated Lua</h2>
 
@@ -541,6 +551,11 @@ const trackSelect = document.getElementById("trackSelect");
 
 const keyboardElement = document.getElementById("keyboard");
 const keyCount = document.getElementById("keyCount");
+
+const runTestsButton = document.getElementById("runTestsButton");
+const clearTestsButton = document.getElementById("clearTestsButton");
+const testSummary = document.getElementById("testSummary");
+const testResults = document.getElementById("testResults");
 
 
 /* ============================================================
@@ -1629,6 +1644,83 @@ function formatNumber(value) {
 
 
 /* ============================================================
+/* ============================================================
+   BUILT-IN TEST SYSTEM
+   ============================================================ */
+
+function assertTest(condition, message) {
+    if (!condition) throw new Error(message);
+}
+
+function createTestMIDI() {
+    const bytes = [
+        0x4D,0x54,0x68,0x64, 0x00,0x00,0x00,0x06,
+        0x00,0x00, 0x00,0x01, 0x01,0xE0,
+        0x4D,0x54,0x72,0x6B, 0x00,0x00,0x00,0x13,
+        0x00,0xFF,0x51,0x03,0x07,0xA1,0x20,
+        0x00,0x90,0x3C,0x64,
+        0x83,0x60,0x80,0x3C,0x00,
+        0x00,0xFF,0x2F,0x00
+    ];
+    return new Uint8Array(bytes).buffer;
+}
+
+function runBuiltInTests() {
+    const tests = [];
+    const test = (name, fn) => {
+        try { fn(); tests.push({name, passed:true, message:"OK"}); }
+        catch (error) { tests.push({name, passed:false, message:error.message || String(error)}); }
+    };
+
+    test("Keyboard contains 62 playable keys", () => assertTest(PIANO_KEYS.length === 62, "Expected 62 keys"));
+    test("First key maps to MIDI 21", () => assertTest(midiToKey(21) === PIANO_KEYS[0], "MIDI 21 mapping failed"));
+    test("Last key maps correctly", () => assertTest(midiToKey(21 + PIANO_KEYS.length - 1) === PIANO_KEYS[PIANO_KEYS.length - 1], "Highest mapping failed"));
+    test("Out-of-range notes are rejected", () => {
+        assertTest(midiToKey(20) === null, "Low note was not rejected");
+        assertTest(midiToKey(83) === null, "High note was not rejected");
+    });
+    test("MIDI parser reads a test MIDI", () => {
+        const parsed = parseMIDI(createTestMIDI());
+        assertTest(parsed.format === 0, "Expected format 0");
+        assertTest(parsed.trackCount === 1, "Expected 1 track");
+        assertTest(parsed.division === 480, "Expected 480 ticks/beat");
+        const note = parsed.tracks[0].find(e => e.type === "noteOn");
+        assertTest(!!note && note.note === 60, "Expected C4 note-on");
+    });
+    test("Tempo conversion gives 0.5 seconds for one beat", () => {
+        const old = midiData;
+        try {
+            midiData = parseMIDI(createTestMIDI());
+            const seconds = ticksToSeconds(480, buildTempoMap());
+            assertTest(Math.abs(seconds - 0.5) < 0.000001, "Expected 0.5 seconds, got " + seconds);
+        } finally { midiData = old; }
+    });
+    test("Lua number formatting is stable", () => {
+        assertTest(formatNumber(0) === "0", "Zero formatting failed");
+        assertTest(formatNumber(0.123456789) === "0.123457", "Rounding failed");
+    });
+    test("Lua escaping handles quotes", () => {
+        assertTest(luaEscape('A "test"') === 'A \\"test\\"', "Quote escaping failed");
+    });
+
+    const passed = tests.filter(t => t.passed).length;
+    const failed = tests.length - passed;
+    testSummary.textContent = "Tests: " + tests.length + " | Passed: " + passed + " | Failed: " + failed;
+    testSummary.className = "status " + (failed === 0 ? "success" : "error");
+    testResults.innerHTML = tests.map(t =>
+        '<div style="margin:6px 0;"><strong>' +
+        (t.passed ? "✓ PASS" : "✗ FAIL") +
+        '</strong> ' + t.name + ' — ' + t.message + '</div>'
+    ).join("");
+}
+
+runTestsButton.addEventListener("click", runBuiltInTests);
+clearTestsButton.addEventListener("click", () => {
+    testSummary.textContent = "Tests have not been run yet.";
+    testSummary.className = "status";
+    testResults.innerHTML = "";
+});
+
    CONVERT BUTTON
 ============================================================ */
 
