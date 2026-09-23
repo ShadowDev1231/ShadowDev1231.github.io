@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIDI → PianoPlayer Converter</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        background: #111827;
+        color: #f9fafb;
+        font-family: Arial, sans-serif;
+    }
+
+    .container {
+        width: min(1100px, 94%);
+        margin: 30px auto;
+    }
+
+    h1 {
+        margin-bottom: 5px;
+    }
+
+    .subtitle {
+        color: #9ca3af;
+        margin-top: 0;
+    }
+
+    .panel {
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 18px;
+    }
+
+    .drop-zone {
+        border: 2px dashed #4b5563;
+        border-radius: 10px;
+        padding: 45px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragover {
+        border-color: #60a5fa;
+        background: #1e3a5f;
+    }
+
+    .drop-zone input {
+        display: none;
+    }
+
+    .file-name {
+        margin-top: 12px;
+        color: #60a5fa;
+        font-weight: bold;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 15px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 6px;
+        color: #d1d5db;
+        font-size: 14px;
+    }
+
+    input,
+    select,
+    button,
+    textarea {
+        width: 100%;
+        border-radius: 7px;
+        border: 1px solid #4b5563;
+        background: #111827;
+        color: white;
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: #60a5fa;
+    }
+
+    button {
+        cursor: pointer;
+        background: #2563eb;
+        border: none;
+        font-weight: bold;
+    }
+
+    button:hover {
+        background: #1d4ed8;
+    }
+
+    button.secondary {
+        background: #374151;
+    }
+
+    button.secondary:hover {
+        background: #4b5563;
+    }
+
+    button.success {
+        background: #059669;
+    }
+
+    button.success:hover {
+        background: #047857;
+    }
+
+    .buttons {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .status {
+        margin-top: 15px;
+        color: #9ca3af;
+        white-space: pre-wrap;
+    }
+
+    textarea {
+        min-height: 450px;
+        resize: vertical;
+        font-family: Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .mapping {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 8px;
+        max-height: 350px;
+        overflow-y: auto;
+        padding: 10px;
+        background: #111827;
+        border-radius: 8px;
+    }
+
+    .mapping-item {
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        padding: 8px;
+    }
+
+    .mapping-item span {
+        display: block;
+        font-size: 11px;
+        color: #9ca3af;
+        margin-bottom: 4px;
+    }
+
+    .mapping-item input {
+        padding: 6px;
+        text-align: center;
+    }
+
+    .info {
+        color: #9ca3af;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .stat {
+        background: #111827;
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .stat-value {
+        font-size: 20px;
+        font-weight: bold;
+        color: #60a5fa;
+    }
+
+    .stat-name {
+        color: #9ca3af;
+        font-size: 12px;
+        margin-top: 3px;
+    }
+
+    .hidden {
+        display: none;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>MIDI → PianoPlayer Lua</h1>
+    <p class="subtitle">
+        Convert MIDI files into Lua songs for the ShadowDev1231 PianoPlayer format.
+    </p>
+
+    <!-- Upload -->
+    <div class="panel">
+
+        <div
+            id="dropZone"
+            class="drop-zone"
+        >
+            <strong>Drop a MIDI file here</strong>
+            <br>
+            <span>or click to select one</span>
+
+            <input
+                id="midiInput"
+                type="file"
+                accept=".mid,.midi,audio/midi,audio/x-midi"
+            >
+        </div>
+
+        <div
+            id="fileName"
+            class="file-name hidden"
+        ></div>
+
+    </div>
+
+    <!-- Settings -->
+    <div class="panel">
+
+        <h2>Song Settings</h2>
+
+        <div class="grid">
+
+            <div>
+                <label for="songName">
+                    Song Name
+                </label>
+
+                <input
+                    id="songName"
+                    type="text"
+                    value="Converted MIDI"
+                >
+            </div>
+
+            <div>
+                <label for="transpose">
+                    Transpose
+                </label>
+
+                <input
+                    id="transpose"
+                    type="number"
+                    value="0"
+                    min="-48"
+                    max="48"
+                >
+            </div>
+
+            <div>
+                <label for="speed">
+                    Speed Multiplier
+                </label>
+
+                <input
+                    id="speed"
+                    type="number"
+                    value="1"
+                    min="0.05"
+                    max="10"
+                    step="0.05"
+                >
+            </div>
+
+            <div>
+                <label for="minDelay">
+                    Minimum Delay (seconds)
+                </label>
+
+                <input
+                    id="minDelay"
+                    type="number"
+                    value="0.01"
+                    min="0"
+                    max="1"
+                    step="0.005"
+                >
+            </div>
+
+            <div>
+                <label for="quantize">
+                    Quantize
+                </label>
+
+                <select id="quantize">
+                    <option value="0">Off</option>
+                    <option value="0.01">10 ms</option>
+                    <option value="0.025">25 ms</option>
+                    <option value="0.05">50 ms</option>
+                    <option value="0.1">100 ms</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="trackSelect">
+                    Track
+                </label>
+
+                <select id="trackSelect">
+                    <option value="-1">All Tracks</option>
+                </select>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MIDI info -->
+    <div
+        id="statsPanel"
+        class="panel hidden"
+    >
+
+        <h2>MIDI Information</h2>
+
+        <div
+            id="stats"
+            class="stats"
+        ></div>
+
+    </div>
+
+    <!-- Mapping -->
+    <div class="panel">
+
+        <h2>MIDI Key Mapping</h2>
+
+        <p class="info">
+            MIDI notes are mapped chromatically onto the available keyboard
+            keys used by PianoModule.lua. You can change individual mappings
+            below.
+        </p>
+
+        <div
+            id="mapping"
+            class="mapping"
+        ></div>
+
+    </div>
+
+    <!-- Generate -->
+    <div class="panel">
+
+        <h2>Generate Lua</h2>
+
+        <div class="buttons">
+
+            <button
+                id="generateButton"
+            >
+                Generate Lua
+            </button>
+
+            <button
+                id="downloadButton"
+                class="success"
+            >
+                Download .lua
+            </button>
+
+            <button
+                id="copyButton"
+                class="secondary"
+            >
+                Copy Lua
+            </button>
+
+        </div>
+
+        <div
+            id="status"
+            class="status"
+        >
+            Select a MIDI file to begin.
+        </div>
+
+    </div>
+
+    <!-- Output -->
+    <div class="panel">
+
+        <h2>Generated Lua</h2>
+
+        <textarea
+            id="output"
+            spellcheck="false"
+            placeholder="Generated Lua will appear here..."
+        ></textarea>
+
+    </div>
+
+</div>
+
+<script>
+
+/* =========================================================
+   MIDI → PianoPlayer Converter
+   ========================================================= */
+
+"use strict";
+
+
+/* =========================================================
+   DOM
+   ========================================================= */
+
+const midiInput = document.getElementById("midiInput");
+const dropZone = document.getElementById("dropZone");
+const fileName = document.getElementById("fileName");
+
+const songNameInput = document.getElementById("songName");
+const transposeInput = document.getElementById("transpose");
+const speedInput = document.getElementById("speed");
+const minDelayInput = document.getElementById("minDelay");
+const quantizeInput = document.getElementById("quantize");
+const trackSelect = document.getElementById("trackSelect");
+
+const mappingContainer = document.getElementById("mapping");
+
+const generateButton = document.getElementById("generateButton");
+const downloadButton = document.getElementById("downloadButton");
+const copyButton = document.getElementById("copyButton");
+
+const output = document.getElementById("output");
+const status = document.getElementById("status");
+
+const statsPanel = document.getElementById("statsPanel");
+const stats = document.getElementById("stats");
+
+
+/* =========================================================
+   Available PianoPlayer keys
+   ========================================================= */
+
+const pianoKeys = [
+    "a", "b", "c", "d", "e", "f", "g",
+    "h", "i", "j", "k",
+    "m", "n", "o", "p", "q", "r",
+    "s", "t", "u", "v", "w", "x", "y", "z",
+
+    "1", "2", "3", "4", "5",
+    "6", "7", "8", "9", "0",
+
+    "!", "\"", "§", "$", "%",
+    "&", "/", "(", ")", "="
+];
+
+
+/* =========================================================
+   Default MIDI mapping
+   =========================================================
+
+   MIDI note 21 = A0.
+   The available piano keyboard keys are assigned
+   chromatically starting from A0.
+   ========================================================= */
+
+let midiMapping = {};
+
+function createDefaultMapping() {
+
+    midiMapping = {};
+
+    for (let i = 0; i < pianoKeys.length; i++) {
+        midiMapping[21 + i] = pianoKeys[i];
+    }
+}
+
+
+/* =========================================================
+   Render Mapping UI
+   ========================================================= */
+
+function renderMapping() {
+
+    mappingContainer.innerHTML = "";
+
+    for (let midiNote = 21; midiNote < 21 + pianoKeys.length; midiNote++) {
+
+        const item = document.createElement("div");
+        item.className = "mapping-item";
+
+        const label = document.createElement("span");
+
+        label.textContent =
+            `MIDI ${midiNote} (${midiNoteName(midiNote)})`;
+
+        const input = document.createElement("input");
+
+        input.type = "text";
+        input.maxLength = 1;
+        input.value = midiMapping[midiNote] || "";
+
+        input.addEventListener("input", () => {
+
+            midiMapping[midiNote] =
+                input.value;
+
+        });
+
+        item.appendChild(label);
+        item.appendChild(input);
+
+        mappingContainer.appendChild(item);
+    }
+}
+
+
+/* =========================================================
+   MIDI note name
+   ========================================================= */
+
+const noteNames = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B"
+];
+
+function midiNoteName(note) {
+
+    const octave =
+        Math.floor(note / 12) - 1;
+
+    return (
+        noteNames[note % 12]
+        + octave
+    );
+}
+
+
+/* =========================================================
+   MIDI Reader
+   ========================================================= */
+
+class MIDIReader {
+
+    constructor(buffer) {
+
+        this.data =
+            new DataView(buffer);
+
+        this.offset = 0;
+    }
+
+    readUint8() {
+
+        const value =
+            this.data.getUint8(this.offset);
+
+        this.offset++;
+
+        return value;
+    }
+
+    readUint16() {
+
+        const value =
+            this.data.getUint16(
+                this.offset,
+                false
+            );
+
+        this.offset += 2;
+
+        return value;
+    }
+
+    readUint32() {
+
+        const value =
+            this.data.getUint32(
+                this.offset,
+                false
+            );
+
+        this.offset += 4;
+
+        return value;
+    }
+
+    readString(length) {
+
+        let result = "";
+
+        for (let i = 0; i < length; i++) {
+
+            result += String.fromCharCode(
+                this.readUint8()
+            );
+        }
+
+        return result;
+    }
+
+    readBytes(length) {
+
+        const bytes =
+            new Uint8Array(
+                this.data.buffer,
+                this.data.byteOffset + this.offset,
+                length
+            );
+
+        this.offset += length;
+
+        return bytes;
+    }
+
+    readVLQ() {
+
+        let value = 0;
+
+        while (true) {
+
+            const byte =
+                this.readUint8();
+
+            value =
+                (value << 7)
+                | (byte & 0x7f);
+
+            if ((byte & 0x80) === 0) {
+                break;
+            }
+        }
+
+        return value;
+    }
+}
+
+
+/* =========================================================
+   Parse MIDI
+   ========================================================= */
+
+function parseMIDI(buffer) {
+
+    const reader =
+        new MIDIReader(buffer);
+
+    const header =
+        reader.readString(4);
+
+    if (header !== "MThd") {
+
+        throw new Error(
+            "This is not a valid MIDI file."
+        );
+    }
+
+    const headerLength =
+        reader.readUint32();
+
+    if (headerLength !== 6) {
+
+        throw new Error(
+            "Unsupported MIDI header."
+        );
+    }
+
+    const format =
+        reader.readUint16();
+
+    const trackCount =
+        reader.readUint16();
+
+    const division =
+        reader.readUint16();
+
+    const tracks = [];
+
+    for (
+        let trackIndex = 0;
+        trackIndex < trackCount;
+        trackIndex++
+    ) {
+
+        const trackHeader =
+            reader.readString(4);
+
+        if (trackHeader !== "MTrk") {
+
+            throw new Error(
+                `Invalid track ${trackIndex}.`
+            );
+        }
+
+        const trackLength =
+            reader.readUint32();
+
+        const trackEnd =
+            reader.offset + trackLength;
+
+        const events = [];
+
+        let absoluteTick = 0;
+        let runningStatus = null;
+
+        while (
+            reader.offset < trackEnd
+        ) {
+
+            const delta =
+                reader.readVLQ();
+
+            absoluteTick += delta;
+
+            let statusByte =
+                reader.readUint8();
+
+            if (
+                statusByte < 0x80
+                && runningStatus !== null
+            ) {
+
+                reader.offset--;
+
+                statusByte =
+                    runningStatus;
+            } else {
+
+                runningStatus =
+                    statusByte < 0xF0
+                        ? statusByte
+                        : null;
+            }
+
+            if (statusByte === 0xFF) {
+
+                const metaType =
+                    reader.readUint8();
+
+                const length =
+                    reader.readVLQ();
+
+                const data =
+                    reader.readBytes(length);
+
+                events.push({
+                    tick: absoluteTick,
+                    type: "meta",
+                    metaType,
+                    data
+                });
+
+                continue;
+            }
+
+            if (
+                statusByte === 0xF0
+                || statusByte === 0xF7
+            ) {
+
+                const length =
+                    reader.readVLQ();
+
+                reader.readBytes(length);
+
+                continue;
+            }
+
+            const eventType =
+                statusByte & 0xF0;
+
+            const channel =
+                statusByte & 0x0F;
+
+            if (
+                eventType === 0x80
+                || eventType === 0x90
+            ) {
+
+                const note =
+                    reader.readUint8();
+
+                const velocity =
+                    reader.readUint8();
+
+                const isNoteOn =
+                    eventType === 0x90
+                    && velocity > 0;
+
+                events.push({
+                    tick: absoluteTick,
+                    type: isNoteOn
+                        ? "noteOn"
+                        : "noteOff",
+                    channel,
+                    note,
+                    velocity
+                });
+
+            } else if (
+                eventType === 0xA0
+                || eventType === 0xB0
+                || eventType === 0xE0
+            ) {
+
+                reader.readUint8();
+                reader.readUint8();
+
+            } else if (
+                eventType === 0xC0
+                || eventType === 0xD0
+            ) {
+
+                reader.readUint8();
+
+            } else {
+
+                throw new Error(
+                    "Unsupported MIDI event: "
+                    + statusByte.toString(16)
+                );
+            }
+        }
+
+        reader.offset =
+            trackEnd;
+
+        tracks.push({
+            events
+        });
+    }
+
+    return {
+        format,
+        trackCount,
+        division,
+        tracks
+    };
+}
+
+
+/* =========================================================
+   Tempo extraction
+   ========================================================= */
+
+function getTempoEvents(midi) {
+
+    const tempos = [];
+
+    for (const track of midi.tracks) {
+
+        for (const event of track.events) {
+
+            if (
+                event.type === "meta"
+                && event.metaType === 0x51
+                && event.data.length === 3
+            ) {
+
+                const microseconds =
+                    (
+                        event.data[0] << 16
+                    )
+                    | (
+                        event.data[1] << 8
+                    )
+                    | event.data[2];
+
+                tempos.push({
+                    tick: event.tick,
+                    microseconds
+                });
+            }
+        }
+    }
+
+    tempos.sort(
+        (a, b) => a.tick - b.tick
+    );
+
+    return tempos;
+}
+
+
+/* =========================================================
+   Convert MIDI ticks to seconds
+   ========================================================= */
+
+function tickToSeconds(
+    tick,
+    division,
+    tempos
+) {
+
+    if (division & 0x8000) {
+
+        // SMPTE MIDI timing.
+        // Basic fallback.
+        const fps =
+            256 -
+            ((division >> 8) & 0xff);
+
+        const ticksPerFrame =
+            division & 0xff;
+
+        return (
+            tick
+            /
+            (
+                fps
+                * ticksPerFrame
+            )
+        );
+    }
+
+    let currentTick = 0;
+
+    let currentTempo =
+        500000;
+
+    let seconds = 0;
+
+    for (const tempo of tempos) {
+
+        if (tempo.tick > tick) {
+            break;
+        }
+
+        const tickDifference =
+            tempo.tick - currentTick;
+
+        seconds +=
+            (
+                tickDifference
+                * currentTempo
+            )
+            /
+            (
+                division
+                * 1000000
+            );
+
+        currentTick =
+            tempo.tick;
+
+        currentTempo =
+            tempo.microseconds;
+    }
+
+    const remainingTicks =
+        tick - currentTick;
+
+    seconds +=
+        (
+            remainingTicks
+            * currentTempo
+        )
+        /
+        (
+            division
+            * 1000000
+        );
+
+    return seconds;
+}
+
+
+/* =========================================================
+   Convert MIDI to note events
+   ========================================================= */
+
+function extractNotes(
+    midi,
+    selectedTrack
+) {
+
+    const tempos =
+        getTempoEvents(midi);
+
+    const selectedTracks =
+        selectedTrack === -1
+            ? midi.tracks
+            : [midi.tracks[selectedTrack]];
+
+    const events = [];
+
+    for (const track of selectedTracks) {
+
+        if (!track) {
+            continue;
+        }
+
+        for (const event of track.events) {
+
+            if (
+                event.type === "noteOn"
+            ) {
+
+                events.push(event);
+            }
+        }
+    }
+
+    events.sort(
+        (a, b) => {
+
+            if (a.tick !== b.tick) {
+                return a.tick - b.tick;
+            }
+
+            return a.note - b.note;
+        }
+    );
+
+    return {
+        events,
+        tempos
+    };
+}
+
+
+/* =========================================================
+   Generate Lua
+   ========================================================= */
+
+function luaString(value) {
+
+    return String(value)
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\r/g, "\\r")
+        .replace(/\n/g, "\\n");
+}
+
+
+function generateLua() {
+
+    if (!currentMIDI) {
+
+        setStatus(
+            "Please select a MIDI file first."
+        );
+
+        return;
+    }
+
+    try {
+
+        const selectedTrack =
+            Number(trackSelect.value);
+
+        const transpose =
+            Number(transposeInput.value) || 0;
+
+        const speed =
+            Number(speedInput.value) || 1;
+
+        const minDelay =
+            Math.max(
+                0,
+                Number(minDelayInput.value) || 0
+            );
+
+        const quantize =
+            Number(quantizeInput.value) || 0;
+
+        const {
+            events,
+            tempos
+        } =
+            extractNotes(
+                currentMIDI,
+                selectedTrack
+            );
+
+        if (events.length === 0) {
+
+            throw new Error(
+                "No MIDI note events found."
+            );
+        }
+
+        const outputEvents = [];
+
+        for (const event of events) {
+
+            let note =
+                event.note + transpose;
+
+            if (
+                note < 0
+                || note > 127
+            ) {
+                continue;
+            }
+
+            const key =
+                midiMapping[note];
+
+            if (!key) {
+                continue;
+            }
+
+            let time =
+                tickToSeconds(
+                    event.tick,
+                    currentMIDI.division,
+                    tempos
+                );
+
+            time /= speed;
+
+            if (quantize > 0) {
+
+                time =
+                    Math.round(
+                        time / quantize
+                    ) * quantize;
+            }
+
+            outputEvents.push({
+                time,
+                key
+            });
+        }
+
+        if (outputEvents.length === 0) {
+
+            throw new Error(
+                "None of the MIDI notes fit inside the current key mapping."
+            );
+        }
+
+        /*
+         * Group notes that occur at the same timestamp.
+         */
+        const groups = [];
+
+        for (const event of outputEvents) {
+
+            const last =
+                groups[groups.length - 1];
+
+            if (
+                last
+                && Math.abs(
+                    last.time - event.time
+                ) < 0.0005
+            ) {
+
+                last.keys.push(
+                    event.key
+                );
+
+            } else {
+
+                groups.push({
+                    time: event.time,
+                    keys: [event.key]
+                });
+            }
+        }
+
+        const songName =
+            songNameInput.value.trim()
+            || "Converted MIDI";
+
+        let lua = "";
+
+        lua += "-- Generated by MIDI → PianoPlayer Converter\n";
+        lua += "-- Compatible with ShadowDev1231/PianoPlayer\n\n";
+
+        lua += "return {\n";
+        lua += `    Name = "${luaString(songName)}",\n\n`;
+
+        lua += "    play = function(self, PianoPlayer)\n";
+
+        let previousTime = 0;
+
+        for (const group of groups) {
+
+            let delay =
+                group.time - previousTime;
+
+            if (delay < 0) {
+                delay = 0;
+            }
+
+            if (delay < minDelay) {
+                delay = 0;
+            }
+
+            /*
+             * Send all notes in the chord with zero delay.
+             * PianoModule itself handles the key press/release.
+             */
+            for (const key of group.keys) {
+
+                lua +=
+                    `        PianoPlayer:playKey("${luaString(key)}", 0)\n`;
+            }
+
+            if (delay > 0) {
+
+                lua +=
+                    `        PianoPlayer:sleep(${formatNumber(delay)})\n`;
+            }
+
+            previousTime =
+                group.time;
+        }
+
+        lua += "    end\n";
+        lua += "}\n";
+
+        output.value =
+            lua;
+
+        setStatus(
+            `Generated ${groups.length} timed event groups `
+            + `from ${outputEvents.length} notes.`
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        setStatus(
+            "Conversion failed:\n"
+            + error.message
+        );
+    }
+}
+
+
+/* =========================================================
+   Number formatting
+   ========================================================= */
+
+function formatNumber(number) {
+
+    return Number(
+        number.toFixed(6)
+    ).toString();
+}
+
+
+/* =========================================================
+   Track UI
+   ========================================================= */
+
+function populateTracks(midi) {
+
+    trackSelect.innerHTML = "";
+
+    const allOption =
+        document.createElement("option");
+
+    allOption.value = "-1";
+    allOption.textContent =
+        "All Tracks";
+
+    trackSelect.appendChild(
+        allOption
+    );
+
+    midi.tracks.forEach(
+        (track, index) => {
+
+            const option =
+                document.createElement("option");
+
+            option.value =
+                String(index);
+
+            const noteCount =
+                track.events.filter(
+                    event =>
+                        event.type === "noteOn"
+                ).length;
+
+            option.textContent =
+                `Track ${index + 1} (${noteCount} notes)`;
+
+            trackSelect.appendChild(
+                option
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   Statistics
+   ========================================================= */
+
+function showStats(midi) {
+
+    const allEvents =
+        midi.tracks.flatMap(
+            track => track.events
+        );
+
+    const notes =
+        allEvents.filter(
+            event =>
+                event.type === "noteOn"
+        );
+
+    const tempos =
+        getTempoEvents(midi);
+
+    const durationTicks =
+        Math.max(
+            ...midi.tracks.flatMap(
+                track =>
+                    track.events.map(
+                        event => event.tick
+                    )
+            ),
+            0
+        );
+
+    const duration =
+        tickToSeconds(
+            durationTicks,
+            midi.division,
+            tempos
+        );
+
+    const bpm =
+        tempos.length > 0
+            ? Math.round(
+                60000000
+                / tempos[0].microseconds
+            )
+            : 120;
+
+    stats.innerHTML = "";
+
+    addStat(
+        "Format",
+        String(midi.format)
+    );
+
+    addStat(
+        "Tracks",
+        String(midi.trackCount)
+    );
+
+    addStat(
+        "Notes",
+        String(notes.length)
+    );
+
+    addStat(
+        "BPM",
+        String(bpm)
+    );
+
+    addStat(
+        "Duration",
+        formatDuration(duration)
+    );
+
+    addStat(
+        "PPQ",
+        String(midi.division)
+    );
+
+    statsPanel.classList.remove(
+        "hidden"
+    );
+}
+
+
+function addStat(name, value) {
+
+    const element =
+        document.createElement("div");
+
+    element.className =
+        "stat";
+
+    element.innerHTML = `
+        <div class="stat-value">
+            ${escapeHTML(value)}
+        </div>
+
+        <div class="stat-name">
+            ${escapeHTML(name)}
+        </div>
+    `;
+
+    stats.appendChild(
+        element
+    );
+}
+
+
+function formatDuration(seconds) {
+
+    const minutes =
+        Math.floor(seconds / 60);
+
+    const remaining =
+        Math.floor(seconds % 60);
+
+    return (
+        String(minutes)
+        + ":"
+        + String(remaining).padStart(2, "0")
+    );
+}
+
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+/* =========================================================
+   File loading
+   ========================================================= */
+
+let currentMIDI = null;
+let currentFile = null;
+
+
+async function loadMIDIFile(file) {
+
+    if (!file) {
+        return;
+    }
+
+    currentFile =
+        file;
+
+    fileName.textContent =
+        file.name;
+
+    fileName.classList.remove(
+        "hidden"
+    );
+
+    status.textContent =
+        "Reading MIDI...";
+
+    try {
+
+        const buffer =
+            await file.arrayBuffer();
+
+        currentMIDI =
+            parseMIDI(buffer);
+
+        populateTracks(
+            currentMIDI
+        );
+
+        showStats(
+            currentMIDI
+        );
+
+        /*
+         * Automatically use filename as song name.
+         */
+        songNameInput.value =
+            file.name
+                .replace(/\.(mid|midi)$/i, "");
+
+        status.textContent =
+            "MIDI loaded successfully.\n"
+            + "Choose your settings and click Generate Lua.";
+
+    } catch (error) {
+
+        currentMIDI = null;
+
+        console.error(error);
+
+        status.textContent =
+            "Could not read MIDI:\n"
+            + error.message;
+    }
+}
+
+
+/* =========================================================
+   File input
+   ========================================================= */
+
+midiInput.addEventListener(
+    "change",
+    () => {
+
+        const file =
+            midiInput.files[0];
+
+        loadMIDIFile(file);
+    }
+);
+
+
+/* =========================================================
+   Drag & Drop
+   ========================================================= */
+
+dropZone.addEventListener(
+    "click",
+    () => {
+        midiInput.click();
+    }
+);
+
+
+dropZone.addEventListener(
+    "dragover",
+    event => {
+
+        event.preventDefault();
+
+        dropZone.classList.add(
+            "dragover"
+        );
+    }
+);
+
+
+dropZone.addEventListener(
+    "dragleave",
+    () => {
+
+        dropZone.classList.remove(
+            "dragover"
+        );
+    }
+);
+
+
+dropZone.addEventListener(
+    "drop",
+    event => {
+
+        event.preventDefault();
+
+        dropZone.classList.remove(
+            "dragover"
+        );
+
+        const file =
+            event.dataTransfer.files[0];
+
+        if (file) {
+            loadMIDIFile(file);
+        }
+    }
+);
+
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+
+generateButton.addEventListener(
+    "click",
+    generateLua
+);
+
+
+downloadButton.addEventListener(
+    "click",
+    () => {
+
+        if (!output.value.trim()) {
+
+            generateLua();
+
+            if (!output.value.trim()) {
+                return;
+            }
+        }
+
+        const name =
+            (
+                songNameInput.value.trim()
+                || "Converted MIDI"
+            )
+            .replace(/[\\/:*?"<>|]/g, "_");
+
+        const blob =
+            new Blob(
+                [output.value],
+                {
+                    type:
+                        "text/plain;charset=utf-8"
+                }
+            );
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const link =
+            document.createElement("a");
+
+        link.href =
+            url;
+
+        link.download =
+            name + ".lua";
+
+        document.body.appendChild(
+            link
+        );
+
+        link.click();
+
+        link.remove();
+
+        URL.revokeObjectURL(
+            url
+        );
+    }
+);
+
+
+copyButton.addEventListener(
+    "click",
+    async () => {
+
+        if (!output.value.trim()) {
+
+            generateLua();
+
+            if (!output.value.trim()) {
+                return;
+            }
+        }
+
+        try {
+
+            await navigator.clipboard.writeText(
+                output.value
+            );
+
+            status.textContent =
+                "Lua copied to clipboard.";
+
+        } catch (error) {
+
+            output.select();
+
+            document.execCommand(
+                "copy"
+            );
+
+            status.textContent =
+                "Lua copied to clipboard.";
+        }
+    }
+);
+
+
+/* =========================================================
+   Initialize
+   ========================================================= */
+
+createDefaultMapping();
+renderMapping();
+
+</script>
+
+</body>
+</html>
+
