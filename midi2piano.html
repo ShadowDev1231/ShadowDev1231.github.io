@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roblox Piano MIDI Converter</title>
+<title>Roblox Piano Studio • MIDI Converter</title>
 
 <style>
     * {
@@ -261,6 +261,252 @@
     .error {
         color: #df7777;
     }
+
+    :root {
+        --bg: #070912;
+        --panel: rgba(18, 22, 35, 0.72);
+        --panel-strong: rgba(20, 25, 40, 0.9);
+        --line: rgba(255,255,255,.10);
+        --text: #f5f7ff;
+        --muted: #8d96ad;
+        --accent: #8b7cff;
+        --accent2: #48d8ff;
+        --good: #65e6a7;
+        --shadow: 0 24px 70px rgba(0,0,0,.38);
+    }
+
+    html { background: var(--bg); }
+
+    body {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+            radial-gradient(circle at 10% 0%, rgba(139,124,255,.20), transparent 32%),
+            radial-gradient(circle at 90% 10%, rgba(72,216,255,.13), transparent 28%),
+            linear-gradient(135deg, #060811 0%, #0b0f1b 48%, #070912 100%);
+        color: var(--text);
+        overflow-x: hidden;
+    }
+
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+            linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+        background-size: 36px 36px;
+        mask-image: linear-gradient(to bottom, black, transparent 85%);
+    }
+
+    .container {
+        width: min(1180px, 94%);
+        margin: 0 auto;
+        padding: 30px 0 70px;
+    }
+
+    .hero {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        margin: 10px 0 24px;
+        padding: 30px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: linear-gradient(135deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        backdrop-filter: blur(18px);
+    }
+
+    .hero::after {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        right: -80px;
+        top: -100px;
+        background: radial-gradient(circle, rgba(139,124,255,.25), transparent 68%);
+        pointer-events: none;
+    }
+
+    .hero h1 {
+        margin: 0 0 8px;
+        font-size: clamp(30px, 5vw, 48px);
+        letter-spacing: -1.5px;
+    }
+
+    .eyebrow {
+        color: var(--accent2);
+        text-transform: uppercase;
+        letter-spacing: .16em;
+        font-size: 11px;
+        font-weight: 800;
+        margin-bottom: 10px;
+    }
+
+    .hero .subtitle { margin: 0; color: var(--muted); }
+
+    .hero-badge {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 10px 14px;
+        border: 1px solid rgba(139,124,255,.28);
+        border-radius: 999px;
+        background: rgba(139,124,255,.10);
+        color: #ddd9ff;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .hero-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--good);
+        box-shadow: 0 0 14px var(--good);
+    }
+
+    .panel {
+        background: linear-gradient(145deg, rgba(25,30,47,.78), rgba(10,14,25,.72));
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 22px;
+        margin-bottom: 16px;
+        box-shadow: 0 14px 45px rgba(0,0,0,.20);
+        backdrop-filter: blur(18px);
+    }
+
+    .panel h2 {
+        margin-top: 0;
+        letter-spacing: -.4px;
+    }
+
+    .panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .panel-heading h2 { margin: 0; }
+
+    .category-preview {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: rgba(72,216,255,.08);
+        border: 1px solid rgba(72,216,255,.18);
+        color: #a9eeff;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .drop-zone {
+        border-color: rgba(139,124,255,.32);
+        background: rgba(139,124,255,.035);
+        transition: .2s ease;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragging {
+        border-color: rgba(72,216,255,.65);
+        background: rgba(72,216,255,.055);
+        transform: translateY(-1px);
+    }
+
+    input[type="text"], input[type="number"], select {
+        background: rgba(5,8,16,.72);
+        border-color: rgba(255,255,255,.10);
+        min-height: 44px;
+        transition: .18s ease;
+    }
+
+    input:focus, select:focus {
+        border-color: rgba(139,124,255,.72);
+        box-shadow: 0 0 0 4px rgba(139,124,255,.10);
+    }
+
+    select {
+        appearance: none;
+        background-image: linear-gradient(45deg, transparent 50%, #8d96ad 50%), linear-gradient(135deg, #8d96ad 50%, transparent 50%);
+        background-position: calc(100% - 17px) 19px, calc(100% - 12px) 19px;
+        background-size: 5px 5px, 5px 5px;
+        background-repeat: no-repeat;
+        padding-right: 38px;
+    }
+
+    button {
+        border-color: rgba(255,255,255,.11);
+        background: rgba(255,255,255,.055);
+        border-radius: 10px;
+        min-height: 42px;
+        transition: .18s ease;
+    }
+
+    button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        background: rgba(255,255,255,.09);
+        border-color: rgba(255,255,255,.18);
+    }
+
+    button.primary {
+        border-color: rgba(139,124,255,.45);
+        background: linear-gradient(135deg, rgba(139,124,255,.85), rgba(72,216,255,.62));
+        box-shadow: 0 10px 28px rgba(83,108,255,.20);
+    }
+
+    button.primary:hover:not(:disabled) {
+        background: linear-gradient(135deg, rgba(154,140,255,.95), rgba(83,225,255,.75));
+    }
+
+    .stat {
+        background: rgba(4,7,14,.45);
+        border-color: rgba(255,255,255,.075);
+        transition: .18s ease;
+    }
+
+    .stat:hover {
+        transform: translateY(-2px);
+        border-color: rgba(139,124,255,.22);
+    }
+
+    .keyboard {
+        background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.55));
+        border: 1px solid rgba(255,255,255,.06);
+        border-radius: 14px;
+    }
+
+    textarea {
+        background: rgba(3,5,11,.72);
+        border-color: rgba(255,255,255,.09);
+        box-shadow: inset 0 1px 20px rgba(0,0,0,.18);
+    }
+
+    .advanced-hint {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-left: 2px solid var(--accent);
+        background: rgba(139,124,255,.055);
+        border-radius: 0 8px 8px 0;
+        color: var(--muted);
+        font-size: 12px;
+    }
+
+    @media (max-width: 700px) {
+        .hero { align-items: flex-start; flex-direction: column; padding: 22px; }
+        .hero-badge { align-self: flex-start; }
+        .panel { padding: 17px; }
+    }
+
 </style>
 </head>
 
@@ -268,10 +514,14 @@
 
 <div class="container">
 
-    <h1>Roblox Piano MIDI Converter</h1>
-    <p class="subtitle">
-        Convert MIDI files into <code>songs/*.lua</code> files for the PianoPlayer system.
-    </p>
+    <header class="hero">
+        <div>
+            <div class="eyebrow">PIANO STUDIO • MIDI WORKFLOW</div>
+            <h1>Roblox Piano Converter</h1>
+            <p class="subtitle">Turn MIDI files into polished <code>songs/*.lua</code> files for PianoPlayer.</p>
+        </div>
+        <div class="hero-badge"><span class="hero-dot"></span> Ready for MIDI</div>
+    </header>
 
     <div class="panel">
         <div
@@ -295,7 +545,7 @@
 
     <div class="panel">
 
-        <h2>Song Settings</h2>
+        <div class="panel-heading"><h2>Song Settings</h2><span id="categoryPreview" class="category-preview">🎼 Other</span></div>
 
         <div class="grid">
 
@@ -306,6 +556,19 @@
                     type="text"
                     value="Converted MIDI"
                 >
+            </div>
+
+            <div>
+                <label for="category">Song category</label>
+                <select id="category">
+                    <option>Other</option>
+                    <option>Minecraft</option>
+                    <option>Games</option>
+                    <option>Movies</option>
+                    <option>Classical</option>
+                    <option>Pop</option>
+                    <option>Meme</option>
+                </select>
             </div>
 
             <div>
@@ -379,6 +642,7 @@
                 Download .lua
             </button>
         </div>
+        <div class="advanced-hint">Category is written directly into the generated Lua as <code>Category = "..."</code>, so your Roblox song browser can filter it later.</div>
 
     </div>
 
@@ -469,10 +733,9 @@
         </p>
 
         <p class="small">
-            The current PianoModule exposes <code>playKey()</code>, which presses
-            and releases each key individually. Therefore MIDI chords occurring
-            at exactly the same time are emitted as consecutive zero-delay
-            key presses rather than true simultaneous key-down events.
+            MIDI note-off events are preserved. The generated Lua passes each
+            note's duration to <code>playKey(key, duration)</code>, so long notes
+            are held for their actual MIDI duration instead of being tapped instantly.
         </p>
 
     </div>
@@ -567,6 +830,19 @@ const trackSelect = document.getElementById("trackSelect");
 
 const keyboardElement = document.getElementById("keyboard");
 const keyCount = document.getElementById("keyCount");
+const categorySelect = document.getElementById("category");
+const categoryPreview = document.getElementById("categoryPreview");
+
+function updateCategoryPreview() {
+    if (categoryPreview && categorySelect) {
+        categoryPreview.textContent = "🎼 " + categorySelect.value;
+    }
+}
+
+if (categorySelect) {
+    categorySelect.addEventListener("change", updateCategoryPreview);
+    updateCategoryPreview();
+}
 const playPreviewButton = document.getElementById("playPreviewButton");
 const stopPreviewButton = document.getElementById("stopPreviewButton");
 const previewStatus = document.getElementById("previewStatus");
@@ -1254,94 +1530,70 @@ function midiToKey(midiNote) {
 ============================================================ */
 
 function collectNotes() {
-
-    const selectedTrack =
-        trackSelect.value;
-
-    const transpose =
-        Number(
-            document.getElementById(
-                "transpose"
-            ).value
-        ) || 0;
-
+    const selectedTrack = trackSelect.value;
+    const transpose = Number(document.getElementById("transpose").value) || 0;
     const selectedTracks = [];
 
     if (selectedTrack === "all") {
-
-        midiData.tracks.forEach(
-            (track, index) => {
-
-                selectedTracks.push({
-                    index,
-                    track
-                });
-            }
-        );
-
+        midiData.tracks.forEach((track, index) => selectedTracks.push({ index, track }));
     } else {
-
-        const index =
-            Number(selectedTrack);
-
-        selectedTracks.push({
-            index,
-            track: midiData.tracks[index]
-        });
+        const index = Number(selectedTrack);
+        selectedTracks.push({ index, track: midiData.tracks[index] });
     }
-
 
     const notes = [];
 
-    for (
-        const trackInfo of selectedTracks
-    ) {
+    /*
+     * Pair note-on and note-off events so generated songs can
+     * hold each piano key for the actual MIDI note duration.
+     */
+    for (const trackInfo of selectedTracks) {
+        const pending = new Map();
 
-        for (
-            const event of trackInfo.track
-        ) {
+        for (const event of trackInfo.track) {
+            if (event.type !== "noteOn" && event.type !== "noteOff") continue;
 
-            if (
-                event.type !== "noteOn"
-            ) {
-                continue;
+            const id = event.channel + ":" + event.note;
+
+            if (event.type === "noteOn") {
+                const queue = pending.get(id) || [];
+                queue.push(event);
+                pending.set(id, queue);
+            } else {
+                const queue = pending.get(id);
+                if (queue && queue.length) {
+                    const start = queue.shift();
+                    start.endTick = Math.max(start.tick, event.tick);
+                }
             }
+        }
 
-            const pitch =
-                event.note + transpose;
+        for (const event of trackInfo.track) {
+            if (event.type !== "noteOn") continue;
 
-            const key =
-                midiToKey(pitch);
+            const pitch = event.note + transpose;
+            const key = midiToKey(pitch);
+            if (key === null) continue;
 
-            if (key === null) {
-                continue;
-            }
+            const endTick =
+                event.endTick != null
+                    ? event.endTick
+                    : event.tick + Math.max(1, Math.round(midiData.division * 0.5));
 
             notes.push({
                 tick: event.tick,
+                endTick,
                 pitch,
                 key,
-                velocity:
-                    event.velocity,
-                track:
-                    trackInfo.index
+                velocity: event.velocity,
+                track: trackInfo.index
             });
         }
     }
 
-    notes.sort(
-        (a, b) =>
-            a.tick - b.tick ||
-            a.pitch - b.pitch
-    );
-
+    notes.sort((a, b) => a.tick - b.tick || a.pitch - b.pitch);
     return notes;
 }
-
-
-/* ============================================================
-   TICKS → SECONDS
-============================================================ */
 
 function buildTempoMap() {
 
@@ -1519,6 +1771,10 @@ function generateLua() {
         ).value.trim() ||
         "Converted MIDI";
 
+    const category =
+        document.getElementById("category").value ||
+        "Other";
+
 
     let speed =
         Number(
@@ -1609,9 +1865,14 @@ function generateLua() {
                     ) * quantize;
             }
 
+            const endTime =
+                ticksToSeconds(note.endTick, tempoMap) / speed;
+
             return {
                 ...note,
-                time
+                time,
+                endTime,
+                duration: Math.max(minimumDelay, endTime - time)
             };
         });
 
@@ -1626,9 +1887,7 @@ function generateLua() {
     /*
     Group notes occurring at the same time.
 
-    The current PianoModule cannot hold multiple
-    keys down simultaneously, so these are emitted
-    with zero delay.
+    Each note in a chord is started in its own task so different keys can overlap and sustain naturally.
     */
 
     const groups = [];
@@ -1668,6 +1927,12 @@ function generateLua() {
     lines.push(
         '    Name = "' +
         luaEscape(songName) +
+        '",'
+    );
+
+    lines.push(
+        '    Category = "' +
+        luaEscape(category) +
         '",'
     );
 
@@ -1719,10 +1984,26 @@ function generateLua() {
             const note of group.notes
         ) {
 
+            /*
+            Start every note in the chord independently so notes can
+            overlap naturally. This is important for piano chords:
+            playKey() itself waits for the hold duration, so calling it
+            directly would make the second note start too late.
+            */
             lines.push(
-                "        PianoPlayer:playKey(" +
+                "        task.spawn(function()"
+            );
+
+            lines.push(
+                "            PianoPlayer:playKey(" +
                 luaKey(note.key) +
-                ", 0)"
+                ", " +
+                formatNumber(Math.max(minimumDelay, note.duration)) +
+                ")"
+            );
+
+            lines.push(
+                "        end)"
             );
         }
 
