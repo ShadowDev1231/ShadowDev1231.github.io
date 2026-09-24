@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internet Service & Speed Checker</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: #f8fafc;
+        min-height: 100vh;
+        padding: 30px 15px;
+    }
+
+    .container {
+        max-width: 900px;
+        margin: auto;
+    }
+
+    h1 {
+        text-align: center;
+        margin-bottom: 8px;
+    }
+
+    .subtitle {
+        text-align: center;
+        color: #94a3b8;
+        margin-bottom: 30px;
+    }
+
+    .card {
+        background: #1e293b;
+        border-radius: 16px;
+        padding: 22px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+
+    .card h2 {
+        margin-top: 0;
+    }
+
+    button {
+        width: 100%;
+        padding: 15px;
+        border: 0;
+        border-radius: 10px;
+        background: #2563eb;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #1d4ed8;
+    }
+
+    button:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+    }
+
+    .service {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 0;
+        border-bottom: 1px solid #334155;
+    }
+
+    .service:last-child {
+        border-bottom: 0;
+    }
+
+    .status {
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: bold;
+    }
+
+    .checking {
+        background: #854d0e;
+        color: #fef08a;
+    }
+
+    .online {
+        background: #166534;
+        color: #bbf7d0;
+    }
+
+    .offline {
+        background: #991b1b;
+        color: #fecaca;
+    }
+
+    .unknown {
+        background: #475569;
+        color: #e2e8f0;
+    }
+
+    .speed-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .speed-box {
+        background: #0f172a;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .speed-value {
+        font-size: 30px;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+
+    .speed-label {
+        color: #94a3b8;
+    }
+
+    .progress {
+        height: 8px;
+        background: #334155;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 15px;
+    }
+
+    .progress-bar {
+        height: 100%;
+        width: 0%;
+        background: #3b82f6;
+        transition: width .2s;
+    }
+
+    #log {
+        background: #020617;
+        border-radius: 10px;
+        padding: 15px;
+        height: 180px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 13px;
+        color: #94a3b8;
+    }
+
+    @media (max-width: 650px) {
+        .speed-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🌐 Internet Service Checker</h1>
+    <div class="subtitle">
+        Check connectivity, latency and approximate download/upload speed
+    </div>
+
+    <div class="card">
+        <h2>Services</h2>
+
+        <div id="services"></div>
+    </div>
+
+    <div class="card">
+        <h2>Internet Speed</h2>
+
+        <button id="startBtn" onclick="runSpeedTest()">
+            Start Speed Test
+        </button>
+
+        <div class="speed-grid">
+
+            <div class="speed-box">
+                <div class="speed-label">Ping</div>
+                <div class="speed-value" id="ping">--</div>
+                <div class="speed-label">ms</div>
+            </div>
+
+            <div class="speed-box">
+                <div class="speed-label">Download</div>
+                <div class="speed-value" id="download">--</div>
+                <div class="speed-label">Mbps</div>
+            </div>
+
+            <div class="speed-box">
+                <div class="speed-label">Upload</div>
+                <div class="speed-value" id="upload">--</div>
+                <div class="speed-label">Mbps</div>
+            </div>
+
+        </div>
+
+        <div class="progress">
+            <div class="progress-bar" id="progress"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Test Log</h2>
+        <div id="log"></div>
+    </div>
+
+</div>
+
+<script>
+
+const services = [
+    {
+        name: "Google",
+        url: "https://www.google.com/favicon.ico"
+    },
+    {
+        name: "Cloudflare",
+        url: "https://www.cloudflare.com/favicon.ico"
+    },
+    {
+        name: "Microsoft",
+        url: "https://www.microsoft.com/favicon.ico"
+    },
+    {
+        name: "GitHub",
+        url: "https://github.com/favicon.ico"
+    },
+    {
+        name: "YouTube",
+        url: "https://www.youtube.com/favicon.ico"
+    },
+    {
+        name: "Discord",
+        url: "https://discord.com/assets/favicon.ico"
+    }
+];
+
+const servicesContainer = document.getElementById("services");
+
+function log(message) {
+    const time = new Date().toLocaleTimeString();
+    const line = document.createElement("div");
+
+    line.textContent = `[${time}] ${message}`;
+
+    document.getElementById("log").appendChild(line);
+
+    const logBox = document.getElementById("log");
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+function createServiceList() {
+
+    servicesContainer.innerHTML = "";
+
+    services.forEach((service, index) => {
+
+        const row = document.createElement("div");
+        row.className = "service";
+
+        row.innerHTML = `
+            <span>${service.name}</span>
+            <span class="status checking" id="service-${index}">
+                Checking...
+            </span>
+        `;
+
+        servicesContainer.appendChild(row);
+    });
+}
+
+async function checkService(service, index) {
+
+    const element = document.getElementById(`service-${index}`);
+
+    const start = performance.now();
+
+    try {
+
+        /*
+         * no-cors allows the browser to determine whether
+         * a request can be sent successfully, although
+         * the response itself cannot be inspected.
+         */
+        await fetch(
+            service.url + "?t=" + Date.now(),
+            {
+                mode: "no-cors",
+                cache: "no-store"
+            }
+        );
+
+        const latency = Math.round(performance.now() - start);
+
+        element.textContent = `Online (${latency} ms)`;
+        element.className = "status online";
+
+        log(`${service.name}: online - ${latency} ms`);
+
+    } catch (error) {
+
+        element.textContent = "Offline";
+        element.className = "status offline";
+
+        log(`${service.name}: unavailable`);
+    }
+}
+
+async function checkAllServices() {
+
+    createServiceList();
+
+    log("Checking services...");
+
+    await Promise.all(
+        services.map((service, index) =>
+            checkService(service, index)
+        )
+    );
+
+    log("Service check complete.");
+}
+
+
+/*
+ * Download test
+ *
+ * A public test file is downloaded from Cloudflare.
+ *
+ * Browser security policies may affect this test depending
+ * on the network/server configuration.
+ */
+async function downloadTest() {
+
+    log("Starting download test...");
+
+    const testURL =
+        "https://speed.cloudflare.com/__down?bytes=10000000&t="
+        + Date.now();
+
+    const start = performance.now();
+
+    try {
+
+        const response = await fetch(
+            testURL,
+            {
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Download request failed");
+        }
+
+        const reader = response.body.getReader();
+
+        let totalBytes = 0;
+
+        while (true) {
+
+            const { done, value } = await reader.read();
+
+            if (done) break;
+
+            totalBytes += value.length;
+
+            const elapsed = (performance.now() - start) / 1000;
+
+            if (elapsed > 0) {
+
+                const mbps =
+                    (totalBytes * 8 / elapsed) /
+                    1000000;
+
+                document.getElementById("download")
+                    .textContent = mbps.toFixed(1);
+
+                document.getElementById("progress")
+                    .style.width =
+                    Math.min(mbps / 2, 100) + "%";
+            }
+        }
+
+        const seconds =
+            (performance.now() - start) / 1000;
+
+        const mbps =
+            (totalBytes * 8 / seconds) /
+            1000000;
+
+        document.getElementById("download")
+            .textContent = mbps.toFixed(1);
+
+        log(
+            `Download: ${mbps.toFixed(1)} Mbps`
+        );
+
+        return mbps;
+
+    } catch (error) {
+
+        log("Download test failed: " + error.message);
+
+        document.getElementById("download")
+            .textContent = "Error";
+
+        return 0;
+    }
+}
+
+
+/*
+ * Upload test
+ *
+ * Generates random data and uploads it to a public endpoint.
+ *
+ * Some browsers/networks may block this because the destination
+ * server must allow cross-origin requests.
+ */
+async function uploadTest() {
+
+    log("Starting upload test...");
+
+    const size = 5 * 1024 * 1024;
+
+    const data = new Uint8Array(size);
+
+    crypto.getRandomValues(data);
+
+    const start = performance.now();
+
+    try {
+
+        await fetch(
+            "https://httpbin.org/post",
+            {
+                method: "POST",
+                body: data,
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        const seconds =
+            (performance.now() - start) / 1000;
+
+        const mbps =
+            (size * 8 / seconds) /
+            1000000;
+
+        document.getElementById("upload")
+            .textContent = mbps.toFixed(1);
+
+        log(
+            `Upload: ${mbps.toFixed(1)} Mbps`
+        );
+
+        return mbps;
+
+    } catch (error) {
+
+        log("Upload test failed: " + error.message);
+
+        document.getElementById("upload")
+            .textContent = "Error";
+
+        return 0;
+    }
+}
+
+
+/*
+ * Ping test
+ */
+async function pingTest() {
+
+    log("Testing latency...");
+
+    const url =
+        "https://www.google.com/favicon.ico?t="
+        + Date.now();
+
+    const start = performance.now();
+
+    try {
+
+        await fetch(
+            url,
+            {
+                mode: "no-cors",
+                cache: "no-store"
+            }
+        );
+
+        const latency =
+            Math.round(performance.now() - start);
+
+        document.getElementById("ping")
+            .textContent = latency;
+
+        log(`Ping: ${latency} ms`);
+
+        return latency;
+
+    } catch (error) {
+
+        document.getElementById("ping")
+            .textContent = "Error";
+
+        log("Ping test failed.");
+
+        return 0;
+    }
+}
+
+
+async function runSpeedTest() {
+
+    const button =
+        document.getElementById("startBtn");
+
+    button.disabled = true;
+    button.textContent = "Testing...";
+
+    document.getElementById("progress")
+        .style.width = "0%";
+
+    document.getElementById("ping")
+        .textContent = "--";
+
+    document.getElementById("download")
+        .textContent = "--";
+
+    document.getElementById("upload")
+        .textContent = "--";
+
+    log("================================");
+    log("Starting complete internet test");
+    log("================================");
+
+    await pingTest();
+
+    await downloadTest();
+
+    await uploadTest();
+
+    log("================================");
+    log("Speed test complete");
+    log("================================");
+
+    button.disabled = false;
+    button.textContent = "Run Test Again";
+}
+
+
+/*
+ * Automatically check services when page loads.
+ */
+checkAllServices();
+
+</script>
+
+</body>
+</html>
