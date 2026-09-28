@@ -3,46 +3,96 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Loading...</title>
+  <meta name="theme-color" content="#08080c">
+
+  <title>Loading — Void Forge Studios</title>
 
   <style>
     * {
       box-sizing: border-box;
     }
 
-    html, body {
-      margin: 0;
+    html,
+    body {
       width: 100%;
       height: 100%;
+      margin: 0;
       overflow: hidden;
+      background: #08080c;
     }
 
     .loader {
-      width: 100%;
-      height: 100%;
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #0b0b0f;
+
+      background:
+        radial-gradient(
+          circle at center,
+          rgba(255, 255, 255, 0.05),
+          transparent 30%
+        ),
+        #08080c;
+
       color: white;
-      font-family: Arial, sans-serif;
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+      transition:
+        opacity 0.5s ease,
+        visibility 0.5s ease;
+    }
+
+    .loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
     }
 
     .spinner {
-      width: 45px;
-      height: 45px;
-      border: 3px solid rgba(255,255,255,.15);
+      width: 52px;
+      height: 52px;
+
+      border: 2px solid rgba(255, 255, 255, 0.12);
       border-top-color: white;
+      border-right-color: rgba(255, 255, 255, 0.5);
+
       border-radius: 50%;
-      animation: spin .8s linear infinite;
+
+      animation: spin 0.85s linear infinite;
     }
 
     .text {
-      margin-top: 18px;
-      font-size: 13px;
-      letter-spacing: 3px;
-      opacity: .7;
+      margin-top: 20px;
+
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.32em;
+
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .site-frame {
+      position: fixed;
+      inset: 0;
+
+      width: 100%;
+      height: 100%;
+
+      border: 0;
+      display: block;
+
+      background: #08080c;
     }
 
     @keyframes spin {
@@ -50,20 +100,57 @@
         transform: rotate(360deg);
       }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner {
+        animation: none;
+      }
+    }
   </style>
 </head>
 
 <body>
 
-  <div class="loader">
-    <div class="spinner"></div>
-    <a href="https://voidforgestudios272.github.io" target="\\\_blank">
-  Open Site
-</a>
-
+  <!-- Loading screen -->
+  <div class="loader" id="loader">
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="text">LOADING</div>
   </div>
 
+  <!-- Starts as about:blank -->
+  <iframe
+    id="siteFrame"
+    class="site-frame"
+    src="about:blank"
+    title="Void Forge Studios"
+    loading="eager"
+    allowfullscreen
+  ></iframe>
 
+  <script>
+    (() => {
+      const frame = document.getElementById("siteFrame");
+      const loader = document.getElementById("loader");
+
+      const TARGET =
+        "https://voidforgestudios272.github.io";
+
+      const DELAY = 2000;
+
+      // Keep iframe at about:blank initially.
+      // After 2 seconds, load the site inside it.
+      setTimeout(() => {
+        frame.src = TARGET;
+      }, DELAY);
+
+      // Hide the loader once the iframe finishes loading.
+      frame.addEventListener("load", () => {
+        if (frame.src !== "about:blank") {
+          loader.classList.add("hidden");
+        }
+      });
+    })();
+  </script>
 
 </body>
 </html>
